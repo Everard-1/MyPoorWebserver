@@ -137,7 +137,15 @@ int recvHttpRequest(int cfd)
 	//读操作是非阻塞的，当前缓存中没有数据值返回-1，errno==EAGAIN
 	if (len == -1 && errno == EAGAIN) {
 		//将请求行从接受的数据中拿出来
+		//在http中换行使用的是\r\n
+		// 遍历字符串，党羽第一个\r\n的时候意味着请求行拿到了
+		char* pt = strstr(buf, "\r\n");
+		//计算请求行长度
+		int reqlen = pt - buf;
+		//保留请求行就可以
+		buf[reqlen] = '\0';		//字符串截断
 		//解析请求行
+
 	}
 	else if (len == 0) {
 		printf("客户端断开了连接...\n");
