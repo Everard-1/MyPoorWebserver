@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 int initListenFd(unsigned short port)
 {
@@ -81,6 +82,7 @@ int epollRun(unsigned short port)
 			}
 			else {
 				//通信->先接收数据，然后再回复数据
+				recvHttpRequest(curfd);
 			}
 		}
 	}
@@ -146,7 +148,7 @@ int recvHttpRequest(int cfd)
 		//保留请求行就可以
 		buf[reqlen] = '\0';		//字符串截断
 		//解析请求行
-
+		parseRequestLine(buf);
 	}
 	else if (len == 0) {
 		printf("客户端断开了连接...\n");
@@ -166,18 +168,85 @@ int parseRequestLine(const char* reqLine)
 	//1.将请求行的三部分依次拆分，有用的前两部分
 	// - 提交数据的方式
 	// - 客户端向服务器请求的文件名
-
+	char method[6];
+	char path[1024];
+	sscanf(reqLine, "%[^ ] %[^ ]", method, path);
 
 	//2.判断请求方式是不是get，不是get方式直接忽略
-
+	if (strcmp(method, "GET") != 0) {
+		// 不是 GET 请求，忽略处理
+		printf("Only GET method is supported.\n");
+		return -1;
+	}
 	//3.判断用户提交的请求是要访问服务器的文件还是目录
 	//   /hello/world/
 	//   - 第一个 / : 服务器提供的资源根目录，在服务器端可以随意制定
 	//   - hello/world/ -> 服务器资源根目录中的两个目录
 	//需要在程序中判断得到的文件的属性 - stat()
+	//判断path中存储的到底是什么字符串？
+	char* file = NULL;		//file中保存的文件路径是相对路径
+	if (strcmp(path, "/") == 0) {		//这个 “/”代表的是main中切换的服务器资源根目录
+		//访问的是服务器提供的资源根目录			假设：/home/robin/luffy
+		// 不是系统根目录，是服务器提供的一个资源目录 == 传递进行的 /home/robin/luffy
+		//如何在服务器端将服务器的资源根目录描述出来？
+		//在启动服务器程序的时候，先确定资源根目录是哪个目录
+		// - 在main函数中将工作目录切换到资源根目录
+		file = "./";		//  ./对应的目录就是客户端访问的资源的根目录
+	}
+	else {
+		//假设是这样的：/hello/a.txt
+		//  / ==> /home/robin/luffy ==>/home/robin/luffy/hello/a.txt
+		//如果不把 / 去掉就相当于要访问系统的根目录
+		file = path + 1;	// hello/a.txt == ./hello.a.txt
+	}
+
+	//属性判断
+	struct stat st;
+	int ret = stat(file, &st);
+	if (ret == -1) {
+		//获取文件属性失败--->没有这个文件
+		//给客户端发送404
+		sendHeadMsg();
+		sendFile("404.html");
+	}
 
 	//4.客户端请求的名字是一个文件，发送文件内容给客户端
-	
+	if (S_ISREG(st.st_mode)) {
+		//如果是普通文件，发送文件给客户端
+		sendHeadMsg();
+		sendFile();
+	}
+
 	//5.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
+	else if (S_ISDIR(st.st_mode)) {
+		//遍历目录，把目录的内容发送给客户端
+		sendHeadMsg();
+		//sendDir();	//<table></table>
+	}
+	return 0;
+}
+
+int sendHeadMsg(int cfd)
+{
+	//状态行 + 消息报头 +空行
+	char buf[4096];
+	// http/1.1 200 ok
+	//消息报头 --->2个键值对
+	//conten-type：xxx   -----》https://tool.oschina.net/commons
+	// mp3--->audio/mp3
+	//content-length：111
+	//空行
+	//拼接完成之后，发送
+	send(cfd, buf, strlen(buf),0);
+	return 0;
+}
+
+int sendFile(const char* filename)
+{
+	//在发送内容之前应该有     状态行 + 消息报头 + 空行 + 文件内容
+	// 这四部分需要组织好之后再发送吗？
+	//  -- 不需要，为什么？   ---》传输层是默认使用tcp
+	// 面向连接的流式传输协议  ->只要最后全部发送完就可以
+	//读文件内容 ，发送给客户端
 	return 0;
 }
