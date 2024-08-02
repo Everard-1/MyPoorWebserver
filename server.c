@@ -94,22 +94,23 @@ int acceptConn(int lfd, int epfd)
 	if (cfd == -1) {
 		perror("accept");
 		return -1;
-		//2.设置通信描述符为非阻塞
-		int flag = fcntl(cfd, F_GETFL);		//获取当前文件描述符 cfd 的标志。
-		flag |= O_NONBLOCK;		//将文件描述符设置为非阻塞模式
-		fcntl(cfd, F_SETFL, flag);		//将修改后的标志设置回文件描述符 cfd
-		//3.通信的文件描述符添加到epoll模型中
-		struct epoll_event ev;
-		ev.events = EPOLLIN | EPOLLET;		//表示有数据可读且采用边沿触发模式
-		ev.data.fd = cfd;
-		int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);		//将新的客户端文件描述符添加到 epoll 实例 epfd 中进行事件监控
-		if (ret == -1) {
-			perror("epoll_ctl");
-			return -1;
-		}
-		return 0;
 	}
+	//2.设置通信描述符为非阻塞
+	int flag = fcntl(cfd, F_GETFL);		//获取当前文件描述符 cfd 的标志。
+	flag |= O_NONBLOCK;		//将文件描述符设置为非阻塞模式
+	fcntl(cfd, F_SETFL, flag);		//将修改后的标志设置回文件描述符 cfd
+	//3.通信的文件描述符添加到epoll模型中
+	struct epoll_event ev;
+	ev.events = EPOLLIN | EPOLLET;		//表示有数据可读且采用边沿触发模式
+	ev.data.fd = cfd;
+	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);		//将新的客户端文件描述符添加到 epoll 实例 epfd 中进行事件监控
+	if (ret == -1) {
+		perror("epoll_ctl");
+		return -1;
+	}
+	return 0;
 }
+
 
 int recvHttpRequest(int cfd)
 {
@@ -138,7 +139,7 @@ int recvHttpRequest(int cfd)
 	if (len == -1 && errno == EAGAIN) {
 		//将请求行从接受的数据中拿出来
 		//在http中换行使用的是\r\n
-		// 遍历字符串，党羽第一个\r\n的时候意味着请求行拿到了
+		// 遍历字符串，当遇到第一个\r\n的时候意味着请求行拿到了
 		char* pt = strstr(buf, "\r\n");
 		//计算请求行长度
 		int reqlen = pt - buf;
@@ -165,6 +166,7 @@ int parseRequestLine(const char* reqLine)
 	//1.将请求行的三部分依次拆分，有用的前两部分
 	// - 提交数据的方式
 	// - 客户端向服务器请求的文件名
+
 
 	//2.判断请求方式是不是get，不是get方式直接忽略
 
