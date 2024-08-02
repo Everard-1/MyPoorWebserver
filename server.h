@@ -7,3 +7,5 @@ int initListenFd(unsigned short port);
 int epollRun(unsigned short port);
 //和客户端建立连接
 int acceptConn(int lfd, int epfd);
+//接收客户端的http请求消息
+int recvHttpRequest(int cfd);

@@ -2,6 +2,8 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 int initListenFd(unsigned short port)
 {
@@ -85,24 +87,64 @@ int epollRun(unsigned short port)
 	return 0;
 }
 
-int acceptConn(int lfd, int epfd) 
+int acceptConn(int lfd, int epfd)
 {
 	//1.建立新连接
 	int cfd = accept(lfd, NULL, NULL);	//接受一个新的客户端连接，并返回新的客户端套接字文件描述符 cfd
 	if (cfd == -1) {
 		perror("accept");
 		return -1;
-	//2.设置通信描述符为非阻塞
-	int flag = fcntl(cfd, F_GETFL);		//获取当前文件描述符 cfd 的标志。
-	flag |= O_NONBLOCK;		//将文件描述符设置为非阻塞模式
-	fcntl(cfd, F_SETFL, flag);		//将修改后的标志设置回文件描述符 cfd
-	//3.通信的文件描述符添加到epoll模型中
-	struct epoll_event ev;
-	ev.events = EPOLLIN | EPOLLET;		//表示有数据可读且采用边沿触发模式
-	ev.data.fd = cfd;
-	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);		//将新的客户端文件描述符添加到 epoll 实例 epfd 中进行事件监控
-	if (ret == -1) {
-		perror("epoll_ctl");
+		//2.设置通信描述符为非阻塞
+		int flag = fcntl(cfd, F_GETFL);		//获取当前文件描述符 cfd 的标志。
+		flag |= O_NONBLOCK;		//将文件描述符设置为非阻塞模式
+		fcntl(cfd, F_SETFL, flag);		//将修改后的标志设置回文件描述符 cfd
+		//3.通信的文件描述符添加到epoll模型中
+		struct epoll_event ev;
+		ev.events = EPOLLIN | EPOLLET;		//表示有数据可读且采用边沿触发模式
+		ev.data.fd = cfd;
+		int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);		//将新的客户端文件描述符添加到 epoll 实例 epfd 中进行事件监控
+		if (ret == -1) {
+			perror("epoll_ctl");
+			return -1;
+		}
+		return 0;
+	}
+}
+
+int recvHttpRequest(int cfd)
+{
+	//临时缓冲区用于存储从套接字读取的数据
+	char tmp[1024];		//每次接收1k数据
+	char buf[4096];		//将每次读到的数据存储到这个buf中
+
+	//循环读数据
+	int len, total = 0;	//total：当前buf中已经存储了多少数据
+
+	//没有必要将所有的http请求全部保存下来
+	//因为需要的数据都在请求行中
+	//-客户端向服务器请求的都是静态资源，请求的资源内容在请求行的第二部分
+	//-只需要将请求完整的保存下来就可以，请求行后边请求头和空行
+	//-不需要解析请求头中的数据，因此接收到 之后不存储也是没问题的
+	while ((len = recv(cfd, tmp, sizeof(tmp), 0)) > 0){			//使用 recv 函数读取数据到 tmp 缓冲区
+		if (total + len < sizeof(buf)) {
+			//有空间存数据
+			memcpy(buf + total, tmp, len);
+		}
+		total += len;	//更新total
+	}
+
+	//循环结束--->读完了
+	//读操作是非阻塞的，当前缓存中没有数据值返回-1，errno==EAGAIN
+	if (len == -1 && errno == EAGAIN) {
+		//将请求行从接受的数据中拿出来
+		//解析请求行
+	}
+	else if (len == 0) {
+		printf("客户端断开了连接...\n");
+		//服务器和客户端断开连接，文件描述符从epoll模型中删除
+	}
+	else {
+		perror("recv");
 		return -1;
 	}
 	return 0;
