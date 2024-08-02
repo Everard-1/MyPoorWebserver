@@ -9,3 +9,5 @@ int epollRun(unsigned short port);
 int acceptConn(int lfd, int epfd);
 //接收客户端的http请求消息
 int recvHttpRequest(int cfd);
+//解析请求行
+int parseRequestLine(const char* reqLine);
