@@ -1,6 +1,7 @@
 #include "server.h"
 #include <arpa/inet.h>
 #include <sys/epoll.h>
+#include <fcntl.h>
 
 int initListenFd(unsigned short port)
 {
@@ -59,17 +60,50 @@ int epollRun(unsigned short port)
 	//检测 - 循环检测
 	struct epoll_event evs[1024];		//定义一个数组 evs，用于存储 epoll 返回的事件
 	int size = sizeof(evs) / sizeof(evs[0]);
+	int flag = 0;
 	while (1) {
+		if (flag) {
+			break;
+		}
 		int num = epoll_wait(epfd, evs, size, -1);		//等待 epoll 事件，-1 表示无限等待
 		for (int i = 0; i < num; i++) {
 			int curfd = evs[i].data.fd;		//获取当前事件的文件描述符
 			if (curfd == lfd) {
 				//建立新连接
+				int ret = acceptConn(lfd, epfd);
+				if (ret == -1) {
+					//规定：建立连接失败，直接终止程序
+					flag = 1;
+					break;
+				}
 			}
 			else {
 				//通信->先接收数据，然后再回复数据
 			}
 		}
+	}
+	return 0;
+}
+
+int acceptConn(int lfd, int epfd) 
+{
+	//1.建立新连接
+	int cfd = accept(lfd, NULL, NULL);	//接受一个新的客户端连接，并返回新的客户端套接字文件描述符 cfd
+	if (cfd == -1) {
+		perror("accept");
+		return -1;
+	//2.设置通信描述符为非阻塞
+	int flag = fcntl(cfd, F_GETFL);		//获取当前文件描述符 cfd 的标志。
+	flag |= O_NONBLOCK;		//将文件描述符设置为非阻塞模式
+	fcntl(cfd, F_SETFL, flag);		//将修改后的标志设置回文件描述符 cfd
+	//3.通信的文件描述符添加到epoll模型中
+	struct epoll_event ev;
+	ev.events = EPOLLIN | EPOLLET;		//表示有数据可读且采用边沿触发模式
+	ev.data.fd = cfd;
+	int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);		//将新的客户端文件描述符添加到 epoll 实例 epfd 中进行事件监控
+	if (ret == -1) {
+		perror("epoll_ctl");
+		return -1;
 	}
 	return 0;
 }
