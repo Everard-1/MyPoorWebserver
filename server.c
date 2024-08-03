@@ -321,10 +321,17 @@ int sendDir(int cfd, const char* dirName)
 			sendHeadMsg(cfd, 404, "Not Found", getFileType(".jpg"), -1);	// -1:大小不知道，客户端自己计算
 			sendFile(cfd, "404.jpg");
 		}
-		sprintf(buf + strlen(buf),
-			"<tr><td><a href=\"%s\">%s</a></td><td>%ld</td></tr>", 
-			name, name, (long)st.st_size);
-
+		if (S_ISDIR(st.st_mode)) {
+			//如果是目录，超链接跳转路径文件后面加/
+			sprintf(buf + strlen(buf),
+				"<tr><td><a href=\"%s/\">%s</a></td><td>%ld</td></tr>",
+				name, name, (long)st.st_size);
+		}
+		else {
+			sprintf(buf + strlen(buf),
+				"<tr><td><a href=\"%s\">%s</a></td><td>%ld</td></tr>",
+				name, name, (long)st.st_size);
+		}
 		//发送数据
 		send(cfd, buf, strlen(buf), 0);
 		//清空数组
