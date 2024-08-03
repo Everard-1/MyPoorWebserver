@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <strings.h>
+#include <stdio.h>
 
 int initListenFd(unsigned short port)
 {
@@ -174,9 +176,10 @@ int parseRequestLine(const char* reqLine)
 	sscanf(reqLine, "%[^ ] %[^ ]", method, path);
 
 	//2.判断请求方式是不是get，不是get方式直接忽略
-	if (strcmp(method, "GET") != 0) {
+	//http中不区分大小写 get / GET / Get
+	if (strcasecmp(method, "get") != 0) {
 		// 不是 GET 请求，忽略处理
-		printf("Only GET method is supported.\n");
+		printf("用户日觉的不是get请求，忽略...\n");
 		return -1;
 	}
 	//3.判断用户提交的请求是要访问服务器的文件还是目录
