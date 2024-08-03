@@ -26,3 +26,4 @@ int sendDir(int cfd, const char* dirName);
 //ÖĞÎÄ½âÂë
 int hexit(char c);
 void decodeMsg(char* to, char* from);
+

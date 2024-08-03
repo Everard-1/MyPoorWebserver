@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <pthread.h>
 
 int initListenFd(unsigned short port)
 {
@@ -72,11 +73,14 @@ int epollRun(unsigned short port)
 		if (flag) {
 			break;
 		}
+		//主线程不停的调用epoll_wait
 		int num = epoll_wait(epfd, evs, size, -1);		//等待 epoll 事件，-1 表示无限等待
 		for (int i = 0; i < num; i++) {
 			int curfd = evs[i].data.fd;		//获取当前事件的文件描述符
 			if (curfd == lfd) {
 				//建立新连接
+				//创建子线程,在子线程中建立新的连接
+				//acceptConn是子线程的回调
 				int ret = acceptConn(lfd, epfd);
 				if (ret == -1) {
 					//规定：建立连接失败，直接终止程序
@@ -86,6 +90,7 @@ int epollRun(unsigned short port)
 			}
 			else {
 				//通信->先接收数据，然后再回复数据
+				//创建线程，在子线程中通信，recvHttpRequest也是子线程的回调
 				recvHttpRequest(curfd, epfd);
 			}
 		}
