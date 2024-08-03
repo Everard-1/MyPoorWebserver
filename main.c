@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include "server.h"
 
 //原则：main函数只是逻辑调用，具体函数不会太复杂

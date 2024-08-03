@@ -212,7 +212,7 @@ int parseRequestLine(int cfd, const char* reqLine)
 		//获取文件属性失败--->没有这个文件
 		//给客户端发送404
 		sendHeadMsg(cfd, 404, "Not Found", getFileType(".html"), -1);	// -1:大小不知道，客户端自己计算
-		sendFile(cfd, "404.html");
+		sendFile(cfd, "404.jpg");
 	}
 
 	//4.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
