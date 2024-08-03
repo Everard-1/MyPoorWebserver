@@ -240,7 +240,7 @@ int sendHeadMsg(int cfd, int status, const char* descr, const char* type, int Le
 	//状态行 + 消息报头 +空行
 	char buf[4096];		//初始化缓冲区
 	// http/1.1 200 ok
-	sprintf("http/1.1 %d %s\r\n", status, descr);
+	sprintf(buf, "http/1.1 %d %s\r\n", status, descr);
 	//消息报头 --->2个键值对
 	//conten-type：xxx   -----》https://tool.oschina.net/commons
 	// mp3--->audio/mp3
