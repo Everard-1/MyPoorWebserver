@@ -82,7 +82,7 @@ int epollRun(unsigned short port)
 			}
 			else {
 				//通信->先接收数据，然后再回复数据
-				recvHttpRequest(curfd);
+				recvHttpRequest(curfd, epfd);
 			}
 		}
 	}
@@ -114,7 +114,7 @@ int acceptConn(int lfd, int epfd)
 }
 
 
-int recvHttpRequest(int cfd)
+int recvHttpRequest(int cfd,int epfd)
 {
 	//临时缓冲区用于存储从套接字读取的数据
 	char tmp[1024];		//每次接收1k数据
@@ -153,6 +153,7 @@ int recvHttpRequest(int cfd)
 	else if (len == 0) {
 		printf("客户端断开了连接...\n");
 		//服务器和客户端断开连接，文件描述符从epoll模型中删除
+		disConnect(cfd, epfd);
 	}
 	else {
 		perror("recv");
@@ -248,5 +249,18 @@ int sendFile(const char* filename)
 	//  -- 不需要，为什么？   ---》传输层是默认使用tcp
 	// 面向连接的流式传输协议  ->只要最后全部发送完就可以
 	//读文件内容 ，发送给客户端
+	return 0;
+}
+
+int disConnect(int cfd, int epfd)
+{
+	//将cfd从epoll模型上删除
+	int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
+	if (ret == -1) {
+		close(cfd);
+		perror("epoll_ctl");
+		return -1;
+	}
+	close(cfd);
 	return 0;
 }
