@@ -192,6 +192,8 @@ int parseRequestLine(int cfd, const char* reqLine)
 	//需要在程序中判断得到的文件的属性 - stat()
 	//判断path中存储的到底是什么字符串？
 	char* file = NULL;		//file中保存的文件路径是相对路径
+	//如果文件名有中文，需要还原
+	decodeMsg(path, path);
 	if (strcmp(path, "/") == 0) {		//这个 “/”代表的是main中切换的服务器资源根目录
 		//访问的是服务器提供的资源根目录			假设：/home/robin/luffy
 		// 不是系统根目录，是服务器提供的一个资源目录 == 传递进行的 /home/robin/luffy
@@ -206,6 +208,8 @@ int parseRequestLine(int cfd, const char* reqLine)
 		//如果不把 / 去掉就相当于要访问系统的根目录
 		file = path + 1;	// hello/a.txt == ./hello.a.txt
 	}
+
+	printf("客户端请求的文件名: %s\n", file);
 
 	//属性判断
 	struct stat st;
@@ -405,4 +409,38 @@ const char* getFileType(const char* name)
 		return "application/x-ns-proxy-autoconfig";
 
 	return "text/plain; charset=utf-8";
+}
+
+//得到十进制的整数
+int hexit(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+
+	return 0;
+}
+
+//解码
+//from：要被转换的字符	----->传入参数
+//to：转换之后得到的字符 --->传出参数
+void decodeMsg(char* to, char* from)
+{
+	for (; *from != '\0'; ++to, ++from) {
+		//isxdigit--->判断字符是不是16进制格式
+		//Linux%E5%86%85%E6%A0%B8.jpg
+		if (from[0] == '%' && isxdigit(from[1]) && isxdigit(from[2])) { 
+			//将16进制的数-->十进制 将这个数值赋给了字符 int->char
+			// A1 == 161
+			*to = hexit(from[1]) * 16 + hexit(from[2]);
+			from += 2;                      
+		}
+		else
+			//不是特殊字符字节赋值
+			*to = *from;
+	}
+	*to = '\0';
 }

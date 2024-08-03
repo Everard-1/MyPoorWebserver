@@ -23,3 +23,6 @@ int disConnect(int cfd, int epfd);
 const char* getFileType(const char* name);
 //发送目录给客户端
 int sendDir(int cfd, const char* dirName);
+//中文解码
+int hexit(char c);
+void decodeMsg(char* to, char* from);
