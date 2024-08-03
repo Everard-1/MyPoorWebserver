@@ -150,7 +150,7 @@ int recvHttpRequest(int cfd,int epfd)
 		//保留请求行就可以
 		buf[reqlen] = '\0';		//字符串截断
 		//解析请求行
-		parseRequestLine(buf);
+		parseRequestLine(cfd,buf);
 	}
 	else if (len == 0) {
 		printf("客户端断开了连接...\n");
@@ -164,7 +164,7 @@ int recvHttpRequest(int cfd,int epfd)
 	return 0;
 }
 
-int parseRequestLine(const char* reqLine)
+int parseRequestLine(int cfd, const char* reqLine)
 {
 	//请求行分为三部分
 	//GET /hello/world/ http/1.1
@@ -211,48 +211,74 @@ int parseRequestLine(const char* reqLine)
 	if (ret == -1) {
 		//获取文件属性失败--->没有这个文件
 		//给客户端发送404
-		sendHeadMsg();
-		sendFile("404.html");
+		sendHeadMsg(cfd, 404, "Not Found", getFileType(".jpg"), -1);	// -1:大小不知道，客户端自己计算
+		sendFile(cfd, "404.jpg");
 	}
 
 	//4.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
 	if (S_ISDIR(st.st_mode)) {
 		//遍历目录，把目录的内容发送给客户端
-		sendHeadMsg();
+		//sendHeadMsg();
 		//sendDir();	//<table></table>
 	}
 
 	//5.客户端请求的名字是一个文件，发送文件内容给客户端
 	else{
 		//目录以外的全为文件，发送文件给客户端
-		sendHeadMsg();
-		sendFile();
+		sendHeadMsg(cfd, 200, "OK", getFileType(file), st.st_size);
+		sendFile(cfd, file);
 	}
 	return 0;
 }
 
-int sendHeadMsg(int cfd)
+//status：状态码     
+//descr：状态描述	
+//type：Content-Type的值（要回复的数据的格式）	
+//ConTent-Length的值(要回复的数据的长度）
+int sendHeadMsg(int cfd, int status, const char* descr, const char* type, int Length)
 {
 	//状态行 + 消息报头 +空行
-	char buf[4096];
+	char buf[4096];		//初始化缓冲区
 	// http/1.1 200 ok
+	sprintf(buf, "http/1.1 %d %s\r\n", status, descr);
 	//消息报头 --->2个键值对
 	//conten-type：xxx   -----》https://tool.oschina.net/commons
 	// mp3--->audio/mp3
+	sprintf(buf + strlen(buf), "Content-Type: %s\r\n", type);
 	//content-length：111
 	//空行
+	sprintf(buf + strlen(buf), "Content-Length: %d\r\n\r\n", Length);
 	//拼接完成之后，发送
 	send(cfd, buf, strlen(buf),0);
 	return 0;
 }
 
-int sendFile(const char* filename)
+int sendFile(int cfd, const char* filename)
 {
 	//在发送内容之前应该有     状态行 + 消息报头 + 空行 + 文件内容
 	// 这四部分需要组织好之后再发送吗？
 	//  -- 不需要，为什么？   ---》传输层是默认使用tcp
 	// 面向连接的流式传输协议  ->只要最后全部发送完就可以
 	//读文件内容 ，发送给客户端
+	//打开文件
+	int fd = open(filename, O_RDONLY);
+	//循环读文件
+	while (1) {
+		char buf[1024] = { 0 };
+		int len = read(fd, buf, sizeof(buf));
+		if (len > 0) {
+			//发送读出的文件内容
+			send(cfd, buf, len, 0);
+		}
+		else if (len == 0) {
+			//文件读完了
+			break;
+		}
+		else {
+			printf("读文件失败...\n");
+			return -1;
+		}
+	}
 	return 0;
 }
 
@@ -267,4 +293,48 @@ int disConnect(int cfd, int epfd)
 	}
 	close(cfd);
 	return 0;
+}
+
+//通过文件名获取文件的类型
+//参数：name-->文件名
+//返回值：这个文件对应的Content-Type类型
+const char* getFileType(const char* name)
+{
+	// a.jpg a.mp4 a.thml
+	//自右向左查找，'.' 字符，如不存在返回NULL;
+	const char* dot = strrchr(name, '.');
+	if (dot == NULL)
+		return "text/plain; charset=utf-8";		//纯文本
+	if (strcmp(dot, ".html") == 0 || strcmp(dot, ".htm") == 0)
+		return "text/html; charset=utf-8";
+	if (strcmp(dot, ".jpg") == 0 || strcmp(dot, ".jpeg") == 0)
+		return "image/jpeg";
+	if (strcmp(dot, ".gif") == 0)
+		return "image/gif";
+	if (strcmp(dot, ".png") == 0)
+		return "image/png";
+	if (strcmp(dot, ".css") == 0)
+		return "text/css";
+	if (strcmp(dot, ".au") == 0)
+		return "audio/basic";
+	if (strcmp(dot, ".wav") == 0)
+		return "audio/wav";
+	if (strcmp(dot, ".avi") == 0)
+		return "video/x-msvideo";
+	if (strcmp(dot, ".mov") == 0 || strcmp(dot, ".qt") == 0)
+		return "video/quicktime";
+	if (strcmp(dot, ".mpeg") == 0 || strcmp(dot, ".mpe") == 0)
+		return "video/mpeg";
+	if (strcmp(dot, ".vrml") == 0 || strcmp(dot, ".wrl") == 0)
+		return "model/vrml";
+	if (strcmp(dot, ".midi") == 0 || strcmp(dot, ".mid") == 0)
+		return "audio/midi";
+	if (strcmp(dot, ".mp3") == 0)
+		return "audio/mpeg";
+	if (strcmp(dot, ".ogg") == 0)
+		return "application/ogg";
+	if (strcmp(dot, ".pac") == 0)
+		return "application/x-ns-proxy-autoconfig";
+
+	return "text/plain; charset=utf-8";
 }
