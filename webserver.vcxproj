@@ -75,8 +75,19 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="acceptConn.c" />
+    <ClCompile Include="decodeMsg.c" />
+    <ClCompile Include="disConnect.c" />
+    <ClCompile Include="epollRun.c" />
+    <ClCompile Include="getFileType.c" />
+    <ClCompile Include="hexit.c" />
+    <ClCompile Include="initListenFd.c" />
     <ClCompile Include="main.c" />
-    <ClCompile Include="server.c" />
+    <ClCompile Include="parseRequestLine.c" />
+    <ClCompile Include="recvHttpRequest.c" />
+    <ClCompile Include="sendDir.c" />
+    <ClCompile Include="sendFile.c" />
+    <ClCompile Include="sendHeadMsg.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="server.h" />
