@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <strings.h>
+#include <stdio.h>
 
 int initListenFd(unsigned short port)
 {
@@ -82,7 +84,7 @@ int epollRun(unsigned short port)
 			}
 			else {
 				//通信->先接收数据，然后再回复数据
-				recvHttpRequest(curfd);
+				recvHttpRequest(curfd, epfd);
 			}
 		}
 	}
@@ -114,7 +116,7 @@ int acceptConn(int lfd, int epfd)
 }
 
 
-int recvHttpRequest(int cfd)
+int recvHttpRequest(int cfd,int epfd)
 {
 	//临时缓冲区用于存储从套接字读取的数据
 	char tmp[1024];		//每次接收1k数据
@@ -153,6 +155,7 @@ int recvHttpRequest(int cfd)
 	else if (len == 0) {
 		printf("客户端断开了连接...\n");
 		//服务器和客户端断开连接，文件描述符从epoll模型中删除
+		disConnect(cfd, epfd);
 	}
 	else {
 		perror("recv");
@@ -173,11 +176,13 @@ int parseRequestLine(const char* reqLine)
 	sscanf(reqLine, "%[^ ] %[^ ]", method, path);
 
 	//2.判断请求方式是不是get，不是get方式直接忽略
-	if (strcmp(method, "GET") != 0) {
+	//http中不区分大小写 get / GET / Get
+	if (strcasecmp(method, "get") != 0) {
 		// 不是 GET 请求，忽略处理
-		printf("Only GET method is supported.\n");
+		printf("用户日觉的不是get请求，忽略...\n");
 		return -1;
 	}
+
 	//3.判断用户提交的请求是要访问服务器的文件还是目录
 	//   /hello/world/
 	//   - 第一个 / : 服务器提供的资源根目录，在服务器端可以随意制定
@@ -210,18 +215,18 @@ int parseRequestLine(const char* reqLine)
 		sendFile("404.html");
 	}
 
-	//4.客户端请求的名字是一个文件，发送文件内容给客户端
-	if (S_ISREG(st.st_mode)) {
-		//如果是普通文件，发送文件给客户端
-		sendHeadMsg();
-		sendFile();
-	}
-
-	//5.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
-	else if (S_ISDIR(st.st_mode)) {
+	//4.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
+	if (S_ISDIR(st.st_mode)) {
 		//遍历目录，把目录的内容发送给客户端
 		sendHeadMsg();
 		//sendDir();	//<table></table>
+	}
+
+	//5.客户端请求的名字是一个文件，发送文件内容给客户端
+	else{
+		//目录以外的全为文件，发送文件给客户端
+		sendHeadMsg();
+		sendFile();
 	}
 	return 0;
 }
@@ -248,5 +253,18 @@ int sendFile(const char* filename)
 	//  -- 不需要，为什么？   ---》传输层是默认使用tcp
 	// 面向连接的流式传输协议  ->只要最后全部发送完就可以
 	//读文件内容 ，发送给客户端
+	return 0;
+}
+
+int disConnect(int cfd, int epfd)
+{
+	//将cfd从epoll模型上删除
+	int ret = epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL);
+	if (ret == -1) {
+		close(cfd);
+		perror("epoll_ctl");
+		return -1;
+	}
+	close(cfd);
 	return 0;
 }
