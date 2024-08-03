@@ -182,6 +182,7 @@ int parseRequestLine(const char* reqLine)
 		printf("用户日觉的不是get请求，忽略...\n");
 		return -1;
 	}
+
 	//3.判断用户提交的请求是要访问服务器的文件还是目录
 	//   /hello/world/
 	//   - 第一个 / : 服务器提供的资源根目录，在服务器端可以随意制定
@@ -214,18 +215,18 @@ int parseRequestLine(const char* reqLine)
 		sendFile("404.html");
 	}
 
-	//4.客户端请求的名字是一个文件，发送文件内容给客户端
-	if (S_ISREG(st.st_mode)) {
-		//如果是普通文件，发送文件给客户端
-		sendHeadMsg();
-		sendFile();
-	}
-
-	//5.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
-	else if (S_ISDIR(st.st_mode)) {
+	//4.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
+	if (S_ISDIR(st.st_mode)) {
 		//遍历目录，把目录的内容发送给客户端
 		sendHeadMsg();
 		//sendDir();	//<table></table>
+	}
+
+	//5.客户端请求的名字是一个文件，发送文件内容给客户端
+	else{
+		//目录以外的全为文件，发送文件给客户端
+		sendHeadMsg();
+		sendFile();
 	}
 	return 0;
 }
