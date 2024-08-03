@@ -218,7 +218,7 @@ int parseRequestLine(int cfd, const char* reqLine)
 	//4.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
 	if (S_ISDIR(st.st_mode)) {
 		//遍历目录，把目录的内容发送给客户端
-		sendHeadMsg();
+		//sendHeadMsg();
 		//sendDir();	//<table></table>
 	}
 

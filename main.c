@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 	//将当前服务器的进程工作目录切换到资源根目录中
 	chdir(argv[2]);
 	//启动服务器->基于epoll
-	unsigned short port = aoti(argv[1]);	//获取端口
+	unsigned short port = atoi(argv[1]);	//获取端口
 	epollRun(port);
 	return 0;
 }
