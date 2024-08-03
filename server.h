@@ -15,7 +15,14 @@ int parseRequestLine(int cfd, const char* reqLine);
 int sendHeadMsg(int cfd, int status, const char* descr, const char* type, int Length);
 //读文件内容,并发送
 int sendFile(int cfd, const char* filename);
+//发送目录给客户端
+int sendDir(int cfd, const char* dirName);
 //和客户端断开连接
 int disConnect(int cfd, int epfd);
 //通过文件名获取到文件的类型
 const char* getFileType(const char* name);
+//发送目录给客户端
+int sendDir(int cfd, const char* dirName);
+//中文解码
+int hexit(char c);
+void decodeMsg(char* to, char* from);

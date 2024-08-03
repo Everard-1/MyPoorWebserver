@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <strings.h>
 #include <stdio.h>
+#include <dirent.h>
+#include <unistd.h>
 
 int initListenFd(unsigned short port)
 {
@@ -190,6 +192,8 @@ int parseRequestLine(int cfd, const char* reqLine)
 	//需要在程序中判断得到的文件的属性 - stat()
 	//判断path中存储的到底是什么字符串？
 	char* file = NULL;		//file中保存的文件路径是相对路径
+	//如果文件名有中文，需要还原
+	decodeMsg(path, path);
 	if (strcmp(path, "/") == 0) {		//这个 “/”代表的是main中切换的服务器资源根目录
 		//访问的是服务器提供的资源根目录			假设：/home/robin/luffy
 		// 不是系统根目录，是服务器提供的一个资源目录 == 传递进行的 /home/robin/luffy
@@ -205,6 +209,8 @@ int parseRequestLine(int cfd, const char* reqLine)
 		file = path + 1;	// hello/a.txt == ./hello.a.txt
 	}
 
+	printf("客户端请求的文件名: %s\n", file);
+
 	//属性判断
 	struct stat st;
 	int ret = stat(file, &st);
@@ -218,8 +224,8 @@ int parseRequestLine(int cfd, const char* reqLine)
 	//4.客户端请求的名字是一个目录，遍历目录，发送目录内容给客户端
 	if (S_ISDIR(st.st_mode)) {
 		//遍历目录，把目录的内容发送给客户端
-		//sendHeadMsg();
-		//sendDir();	//<table></table>
+		sendHeadMsg(cfd, 200, "OK", getFileType(".html"), -1);
+		sendDir(cfd, file);	//<table></table>
 	}
 
 	//5.客户端请求的名字是一个文件，发送文件内容给客户端
@@ -269,6 +275,8 @@ int sendFile(int cfd, const char* filename)
 		if (len > 0) {
 			//发送读出的文件内容
 			send(cfd, buf, len, 0);
+			//发送端发送数据太快会导致接收端的显示有异常
+			usleep(50);
 		}
 		else if (len == 0) {
 			//文件读完了
@@ -279,6 +287,70 @@ int sendFile(int cfd, const char* filename)
 			return -1;
 		}
 	}
+	return 0;
+}
+
+/*
+	客户端访问目录，服务器需要遍历当前目录，并且将目录中的所有文件名发送给客户端即可
+	- 遍历目录得到的文件名需要放到html表格中
+	- 回复的数据是html格式的数据块
+	<html>
+		<head>
+			<title>test</title>
+		</head>
+		<body>
+			<table>
+				<tr>
+					<td>文件名</td>
+					<td>文件大小</td>
+				</tr>
+			</table>
+		</body>
+	<html>
+*/
+// opendir readdir closedir
+int sendDir(int cfd, const char* dirName)
+{
+	char buf[4096];
+	struct dirent** namelist;
+	sprintf(buf, "<html><head><title>%s</title></head></body><table>", dirName);
+	int num = scandir(dirName, &namelist, NULL, alphasort);
+	for (int i = 0; i < num; ++i) {
+		//取出文件名
+		char* name = namelist[i]->d_name;
+		//拼接当前文件在资源文件中的相对路径
+		char subpath[1024];
+		sprintf(subpath, "%s/%s", dirName, name);
+		struct stat st;
+		//stat函数的第一个参数是文件的路径	
+		int ret = stat(subpath, &st);
+		if (ret == -1) {
+			sendHeadMsg(cfd, 404, "Not Found", getFileType(".jpg"), -1);	// -1:大小不知道，客户端自己计算
+			sendFile(cfd, "404.jpg");
+		}
+		if (S_ISDIR(st.st_mode)) {
+			//如果是目录，超链接跳转路径文件后面加/
+			sprintf(buf + strlen(buf),
+				"<tr><td><a href=\"%s/\">%s</a></td><td>%ld</td></tr>",
+				name, name, (long)st.st_size);
+		}
+		else {
+			sprintf(buf + strlen(buf),
+				"<tr><td><a href=\"%s\">%s</a></td><td>%ld</td></tr>",
+				name, name, (long)st.st_size);
+		}
+		//发送数据
+		send(cfd, buf, strlen(buf), 0);
+		//清空数组
+		memset(buf, 0, sizeof(buf));
+		//释放资源	namelist[i] 这个指针指向一块有效的内存
+		free(namelist[i]);
+	}
+	//补全html剩余的标签
+	sprintf(buf, "</table></body></html>");
+	send(cfd, buf, strlen(buf), 0);
+	//释放namelist
+	free(namelist);
 	return 0;
 }
 
@@ -337,4 +409,38 @@ const char* getFileType(const char* name)
 		return "application/x-ns-proxy-autoconfig";
 
 	return "text/plain; charset=utf-8";
+}
+
+//得到十进制的整数
+int hexit(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+
+	return 0;
+}
+
+//解码
+//from：要被转换的字符	----->传入参数
+//to：转换之后得到的字符 --->传出参数
+void decodeMsg(char* to, char* from)
+{
+	for (; *from != '\0'; ++to, ++from) {
+		//isxdigit--->判断字符是不是16进制格式
+		//Linux%E5%86%85%E6%A0%B8.jpg
+		if (from[0] == '%' && isxdigit(from[1]) && isxdigit(from[2])) { 
+			//将16进制的数-->十进制 将这个数值赋给了字符 int->char
+			// A1 == 161
+			*to = hexit(from[1]) * 16 + hexit(from[2]);
+			from += 2;                      
+		}
+		else
+			//不是特殊字符字节赋值
+			*to = *from;
+	}
+	*to = '\0';
 }
