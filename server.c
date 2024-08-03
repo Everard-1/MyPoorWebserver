@@ -322,7 +322,8 @@ int sendDir(int cfd, const char* dirName)
 			sendFile(cfd, "404.jpg");
 		}
 		sprintf(buf + strlen(buf),
-			"<tr><td>%s</td><td>%ld</td></tr>", name, (long)st.st_size);
+			"<tr><td><a href=\"%s\">%s</a></td><td>%ld</td></tr>", 
+			name, name, (long)st.st_size);
 
 		//·¢ËÍÊý¾Ý
 		send(cfd, buf, strlen(buf), 0);
