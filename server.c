@@ -8,6 +8,7 @@
 #include <strings.h>
 #include <stdio.h>
 #include <dirent.h>
+#include <unistd.h>
 
 int initListenFd(unsigned short port)
 {
@@ -270,6 +271,8 @@ int sendFile(int cfd, const char* filename)
 		if (len > 0) {
 			//发送读出的文件内容
 			send(cfd, buf, len, 0);
+			//发送端发送数据太快会导致接收端的显示有异常
+			usleep(50);
 		}
 		else if (len == 0) {
 			//文件读完了
