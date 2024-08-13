@@ -1,2 +1,12 @@
 # webserver
 一个基于B/S方式通信的webserver项目
+<a name="X9KQa"></a>
+# webserver代码逻辑框架
+![](https://cdn.nlark.com/yuque/0/2024/jpeg/27393008/1722676955377-c8d5be65-16c5-48e2-b760-44615d93d349.jpeg)
+<a name="ouXwM"></a>
+# 函数之间的关系
+![](https://cdn.nlark.com/yuque/0/2024/jpeg/27393008/1722684018484-1338bfdf-7e9f-4581-bd6f-6380e13ddb22.jpeg)
+<a name="UHylq"></a>
+# 效果演示：
+在linux中启动web服务器<br />![image.png](https://cdn.nlark.com/yuque/0/2024/png/27393008/1722687472676-8c2171d0-34a9-4d45-afa3-f13355311d88.png#averageHue=%232d0922&clientId=u732540f4-4185-4&from=paste&height=765&id=uf0f0c39c&originHeight=956&originWidth=1524&originalType=binary&ratio=1.5&rotation=0&showTitle=false&size=232971&status=done&style=none&taskId=u14f802fb-3ee9-493a-b96d-9ea32f24901&title=&width=1219.2)<br />同时我们在浏览器中连接web服务器和他的端口<br />![image.png](https://cdn.nlark.com/yuque/0/2024/png/27393008/1722687585862-1a4173bd-c626-41cd-9d81-4a847c4ad9e0.png#averageHue=%23fefefe&clientId=u732540f4-4185-4&from=paste&height=1104&id=u18a3bf4e&originHeight=1380&originWidth=2560&originalType=binary&ratio=1.5&rotation=0&showTitle=false&size=329654&status=done&style=none&taskId=u35ca8a1d-c2d4-43df-920e-a598020b53f&title=&width=2048)<br />我们可以直接点击文件<br />![image.png](https://cdn.nlark.com/yuque/0/2024/png/27393008/1722687844509-67a84df2-18d7-467a-a4d4-a346597ff013.png#averageHue=%2367715f&clientId=u732540f4-4185-4&from=paste&height=1104&id=u5080621c&originHeight=1380&originWidth=2560&originalType=binary&ratio=1.5&rotation=0&showTitle=false&size=5521701&status=done&style=none&taskId=ufa5fbaf4-e6b1-4508-90f2-7ba34c73429&title=&width=2048)<br />也可以点击目录中的文件<br />![image.png](https://cdn.nlark.com/yuque/0/2024/png/27393008/1722687789390-3cff1acd-1cbe-45b5-b4cd-f4f95d281d6f.png#averageHue=%23100f0f&clientId=u732540f4-4185-4&from=paste&height=558&id=u12c49006&originHeight=697&originWidth=1014&originalType=binary&ratio=1.5&rotation=0&showTitle=false&size=358988&status=done&style=none&taskId=uab297108-50c5-4634-949f-3454571dab6&title=&width=811.2)<br />甚至可以获取到带有中文路径的文件<br />![image.png](https://cdn.nlark.com/yuque/0/2024/png/27393008/1722687944251-25631a7f-0bd7-448d-a739-63bb629af3db.png#averageHue=%2351504f&clientId=u732540f4-4185-4&from=paste&height=714&id=ufab3b8c7&originHeight=892&originWidth=1102&originalType=binary&ratio=1.5&rotation=0&showTitle=false&size=136714&status=done&style=none&taskId=u65318ca5-f7f2-446d-8575-c919e11b042&title=&width=881.6)
+
